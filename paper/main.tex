@@ -1,0 +1,339 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
+\usepackage{cleveref}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\MSE}{\mathrm{MSE}}
+\newcommand{\tr}{\mathrm{tr}}
+\newcommand{\eps}{\epsilon}
+\graphicspath{{../figures/}}
+
+\title{\textbf{Zero-noise extrapolation versus probabilistic error cancellation on noisy quantum processors:\\ a fixed-budget bias--variance analysis and selection rule}}
+\author{Angel Sayani\\[2pt]
+\small IntellChromatics LLC\\
+\small \texttt{angelsayani@intellchromatics.com}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Zero-noise extrapolation (ZNE) and probabilistic error cancellation (PEC) are the two most widely used error-mitigation techniques for near-term quantum processors, and they are usually contrasted qualitatively: ZNE is cheap but biased, PEC is unbiased but has a sampling overhead that grows exponentially with circuit size. We make this comparison quantitative. Fixing the total number of measurement shots $N$ and taking the mean squared error (MSE) of the mitigated expectation value as the figure of merit, we derive closed-form expressions for the MSE of PEC and of four standard ZNE estimators under local depolarizing noise, and we obtain the crossover budget $N^*$ above which PEC is preferable. Two consequences are not widely appreciated. First, extrapolation amplifies shot noise by a fixed factor ($5$ for two-point linear, $15.7$ for three-point Richardson extrapolation with equal shot allocation), whereas the PEC overhead is $\gamma^2 \simeq e^{4\eps}$ with $\eps$ the expected number of gate errors; consequently PEC has lower MSE than ZNE at \emph{every} shot budget whenever $\eps \lesssim 0.40$ (linear) or $\eps \lesssim 0.69$ (Richardson), independent of circuit structure. Second, for Clifford circuits under Pauli noise the noisy expectation value is an exact geometric function of the noise scale, so exponential extrapolation is exactly unbiased; we prove this and observe it numerically for GHZ-state parity. We validate the analysis with exact density-matrix simulations of 162 circuit configurations drawn from three families (Trotterized transverse-field Ising dynamics, a hardware-efficient ansatz, and GHZ preparation on up to 8 qubits) and with shot-level Monte Carlo. PEC is MSE-optimal in 43\% of configurations at $N=10^3$ and 91\% at $N=10^6$, while unmitigated estimation is optimal in 36\% of configurations at $N=10^3$. We quantify PEC's sensitivity to noise-model miscalibration and find that the tolerable relative calibration error for PEC to remain preferable falls as $N^{-1/2}$ and is of order $1$--$4\%$ at $N=10^6$ for the structured circuits studied. Adding amplitude damping shows that this conclusion is conditional on the noise being Pauli: when the damping is twirled into a Pauli channel, as randomized compiling does, the picture is unchanged, but when it is not, the non-unital part of the noise gives PEC built on a Pauli model a bias of roughly $0.09\,\eps$ that makes it worse than the unmitigated estimator beyond $\eps\approx0.75$, while three-parameter exponential extrapolation absorbs the shifted asymptote and becomes optimal. Finally, we propose a selection rule that uses only the pilot data ZNE already requires plus the calibrated $\gamma$; across all configurations and budgets its MSE is within a factor of two of the better of PEC and Richardson ZNE in 98.4\% of cases. All code is provided for reproduction.
+\end{abstract}
+
+\section{Introduction}
+
+Quantum error mitigation (QEM) is the collection of techniques that reduce the effect of noise on expectation values estimated from a noisy quantum processor without the qubit overhead of error correction \cite{temme2017,li2017,endo2018,cai2023rmp}. The two techniques in widest use are zero-noise extrapolation (ZNE), which runs the circuit at several artificially amplified noise levels and extrapolates to zero noise \cite{temme2017,li2017,kandala2019,giurgicatiron2020,kim2023}, and probabilistic error cancellation (PEC), which samples from a quasi-probability decomposition of the inverse noise channel and so cancels the noise in expectation \cite{temme2017,endo2018,vandenberg2023}.
+
+The standard account of the trade-off between them is qualitative. ZNE requires no detailed noise model and adds only a small constant overhead, but it is biased because the extrapolation model is never exact. PEC is unbiased if the noise model is exact, but the estimator's variance grows as $\gamma^2$, where $\gamma$ is the product of the one-norms of the per-gate quasi-probability decompositions, and $\gamma^2$ grows exponentially with circuit size \cite{temme2017,takagi2022,quek2022,tsubouchi2023}. This account leaves open the question an experimenter actually faces: \emph{given this circuit, this noise level and this many shots, which method gives the smaller error?}
+
+This paper answers that question for a well-defined but representative setting: local depolarizing noise after every gate, Pauli observables, global unitary folding for ZNE, and the exact inverse-channel quasi-probability for PEC. The restriction buys exactness. The mean squared error (MSE) of every estimator at a fixed total shot budget $N$ can be written in closed form in terms of a handful of exactly computable quantities, which we then evaluate for 162 circuit configurations across three circuit families.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+\item We derive the MSE of PEC and of four ZNE estimators (two-point linear, three-point Richardson, two-point exponential with known asymptote, three-point exponential) at fixed shot budget, and the crossover budget $N^*$ at which PEC overtakes a given ZNE estimator (\cref{sec:theory}).
+\item We show that ZNE's shot-noise amplification factor, $V_{\rm ZNE}=K\sum_\ell c_\ell^2(1-\langle O\rangle_\ell^2)$, is bounded above by a constant ($5$ for linear, $15.7$ for Richardson), while PEC's factor is $\gamma^2-\langle O\rangle^2$ with $\gamma^2 = e^{4\eps}(1+O(p^2))$. Hence PEC dominates ZNE at every $N$ whenever $e^{4\eps}<V_{\rm ZNE}$, i.e.\ for $\eps\lesssim0.40$ (linear) or $\eps\lesssim0.69$ (Richardson), regardless of circuit structure (\cref{cor:threshold}).
+\item We prove that for Clifford circuits under Pauli noise the folded expectation value is an exact geometric function of the scale factor, so that exponential ZNE is exactly unbiased (\cref{prop:clifford}).
+\item We validate the analysis with exact density-matrix simulation and shot-level Monte Carlo (\cref{sec:numerics}), map which method is MSE-optimal as a function of depth, noise rate and budget (\cref{fig:phase}), and quantify PEC's sensitivity to miscalibration of the noise model (\cref{fig:miscal}).
+\item We test robustness to non-Pauli noise by adding amplitude damping, both Pauli-twirled (randomized compiling) and untwirled, and find that the untwirled case reverses the ranking (\cref{sec:ampdamp}).
+\item We give a practical selection rule using only quantities available before the main experiment, and evaluate its regret against oracle choices (\cref{sec:rule}).
+\end{enumerate}
+
+\paragraph{Relation to prior work.}
+Fundamental limits of QEM have been studied through the sampling overhead required to achieve a target precision \cite{takagi2022,quek2022,tsubouchi2023}; those results bound \emph{all} mitigation strategies and are expressed in terms of the circuit's noise. Our question is narrower and complementary: for the two specific estimators in everyday use, where does the MSE-minimizing choice lie? Combinations of noise scaling and PEC have been proposed \cite{mari2021}, as have multi-exponential extrapolation models \cite{cai2021} and learning-based variants \cite{strikis2021,lowe2021}. The experimental comparison of \citet{vandenberg2023} and the utility-scale ZNE demonstrations of \citet{kim2023} report accuracy at the budgets used but do not sweep the budget. Software frameworks such as Mitiq \cite{larose2022} implement every estimator considered here, which is one motivation for a rule to choose among them.
+
+\section{Setting}
+\label{sec:setting}
+
+\subsection{Circuits, noise and observable}
+
+A circuit is a sequence of $n_1$ single-qubit and $n_2$ two-qubit gates acting on $n$ qubits initialized in $|0\rangle^{\otimes n}$. After each $k$-qubit gate ($k\in\{1,2\}$) a $k$-qubit depolarizing channel acts on the gate's qubits,
+\begin{equation}
+\mathcal D_{\lambda_k}(\rho)=\lambda_k\rho+(1-\lambda_k)\,\tr_{q}(\rho)\otimes \tfrac{I}{2^k},
+\qquad \lambda_k = 1-\frac{4^k}{4^k-1}\,p_k,
+\label{eq:depol}
+\end{equation}
+where $p_k$ is the probability that a uniformly random non-identity Pauli error occurs. Throughout we take $p_2=10\,p_1$, in line with typical superconducting-qubit error ratios. We measure a Pauli observable $O$ with eigenvalues $\pm1$; a single shot returns $o\in\{\pm1\}$ and the noiseless target is $\langle O\rangle_0 = \tr(O\rho_{\rm ideal})$.
+
+The quantity that organizes the results is the expected number of gate errors,
+\begin{equation}
+\eps = n_1p_1+n_2p_2 .
+\end{equation}
+
+\subsection{Estimators}
+
+All estimators are built from Bernoulli-type measurement records, so their shot-noise variance can be written exactly.
+
+\paragraph{Raw.} The unmitigated estimator is the sample mean of $N$ shots of the noisy circuit; $\E[\hat O_{\rm raw}]=\langle O\rangle_1$ and $\Var = (1-\langle O\rangle_1^2)/N$.
+
+\paragraph{ZNE.} Noise is amplified by global unitary folding \cite{giurgicatiron2020}: for odd scale factor $\lambda=2k+1$ the circuit $U$ is replaced by $U(U^\dagger U)^k$, so every gate (and its noise) occurs $\lambda$ times. Let $\langle O\rangle_\lambda$ be the exact noisy expectation value of the folded circuit. Shots are split equally among the $K$ scale factors ($N_\lambda = N/K$), giving sample means $\hat E_\lambda$ with $\Var(\hat E_\lambda)=(1-\langle O\rangle_\lambda^2)K/N$. We consider four extrapolators $f$ with $\hat O_{\rm ZNE}=f(\hat E_1,\hat E_3,\ldots)$:
+\begin{itemize}
+\item \textbf{ZNE-lin}: $f=\tfrac32 E_1-\tfrac12 E_3$ (linear through $\lambda=1,3$);
+\item \textbf{ZNE-quad}: $f=\tfrac{15}{8}E_1-\tfrac54 E_3+\tfrac38 E_5$ (quadratic Richardson through $\lambda=1,3,5$);
+\item \textbf{ZNE-exp0}: $f=E_1\sqrt{E_1/E_3}$ (exponential with known asymptote $0$ through $\lambda=1,3$; the asymptote is exact for traceless $O$ under depolarizing noise);
+\item \textbf{ZNE-exp3}: $f=A+(E_1-A)/\sqrt{(E_3-A)/(E_1-A)}$ with $A=(E_1E_5-E_3^2)/(E_1+E_5-2E_3)$ (three-parameter exponential $A+Br^\lambda$ through $\lambda=1,3,5$).
+\end{itemize}
+The first two are linear in the data; the last two are not.
+
+\paragraph{PEC.} For each gate the inverse channel $\mathcal D_{\lambda_k}^{-1}=\mathcal D_{1/\lambda_k}$ is expanded in the Pauli basis, $\mathcal D^{-1}(\rho)=\sum_P a_P P\rho P$, with $a_I = \tfrac1{\lambda_k}+\tfrac{1-1/\lambda_k}{4^k}$ and $a_P=\tfrac{1-1/\lambda_k}{4^k}<0$ for $P\neq I$. Writing $\gamma_k=\sum_P|a_P|$,
+\begin{equation}
+\gamma_1=\frac{3-\lambda_1}{2\lambda_1},\qquad \gamma_2=\frac{15/\lambda_2-7}{8},\qquad
+\gamma = \gamma_1^{n_1}\gamma_2^{n_2}.
+\label{eq:gamma}
+\end{equation}
+Each PEC sample draws a Pauli insertion after every gate with probability $|a_P|/\gamma_k$, records the product $s\in\{\pm1\}$ of the signs of the chosen coefficients, measures $o\in\{\pm1\}$, and returns $\gamma s o$. The estimator is the mean of $N$ such samples. When the noise model used to build the decomposition is exact, $\E[\hat O_{\rm PEC}]=\langle O\rangle_0$ \cite{temme2017}.
+
+\subsection{Figure of merit}
+
+For a fixed total budget of $N$ shots (counting every circuit execution, at every scale factor and every PEC sample, as one shot) we compare estimators by
+\begin{equation}
+\MSE(\hat O) = \big(\E[\hat O]-\langle O\rangle_0\big)^2+\Var(\hat O) .
+\end{equation}
+
+\section{Analytical results}
+\label{sec:theory}
+
+\begin{proposition}[PEC variance]
+\label{prop:pec}
+With an exact noise model, the PEC estimator from $N$ samples satisfies
+\begin{equation}
+\MSE(\hat O_{\rm PEC}) = \frac{\gamma^2-\langle O\rangle_0^2}{N}.
+\end{equation}
+\end{proposition}
+\begin{proof}
+A single PEC sample is $X=\gamma s o$ with $s,o\in\{\pm1\}$, so $X^2=\gamma^2$ deterministically and $\Var(X)=\gamma^2-(\E X)^2=\gamma^2-\langle O\rangle_0^2$. Unbiasedness gives zero bias.
+\end{proof}
+The identity $X^2=\gamma^2$ makes the familiar ``variance $\sim\gamma^2$'' statement exact rather than asymptotic, and shows that PEC's shot variance can be \emph{smaller} than that of the raw estimator when $\gamma^2-\langle O\rangle_0^2 < 1-\langle O\rangle_1^2$, which happens for high-fidelity observables (\cref{fig:mse}, GHZ panel).
+
+\begin{proposition}[ZNE MSE]
+\label{prop:zne}
+Let $f$ be an extrapolator applied to sample means at scale factors $\{\lambda_\ell\}_{\ell=1}^K$ with $N/K$ shots each, and let $g_\ell=\partial f/\partial E_\ell$ at the exact values. Then to leading order in $1/N$
+\begin{equation}
+\MSE(\hat O_{\rm ZNE}) = \underbrace{\big(f(\langle O\rangle_{\lambda_1},\ldots)-\langle O\rangle_0\big)^2}_{b^2}
++\frac{V_{\rm ZNE}}{N},\qquad
+V_{\rm ZNE} = K\sum_{\ell} g_\ell^2\,\big(1-\langle O\rangle_{\lambda_\ell}^2\big).
+\label{eq:znemse}
+\end{equation}
+For the linear extrapolators $g_\ell=c_\ell$ and the expression is exact. In particular $V_{\rm ZNE}\le K\sum_\ell c_\ell^2$, which equals $5$ for ZNE-lin and $15.66$ for ZNE-quad.
+\end{proposition}
+\begin{proof}
+Delta method; exactness for linear $f$ is immediate from linearity of expectation and independence of the scale-factor samples.
+\end{proof}
+
+\begin{corollary}[Crossover budget]
+\label{cor:nstar}
+PEC has smaller MSE than a ZNE estimator with bias $b$ and variance factor $V_{\rm ZNE}$ if and only if
+\begin{equation}
+N > N^* \equiv \frac{\gamma^2-\langle O\rangle_0^2-V_{\rm ZNE}}{b^2},
+\label{eq:nstar}
+\end{equation}
+with the convention $N^*=0$ when the numerator is non-positive (PEC wins at every budget) and $N^*=\infty$ when $b=0$ and the numerator is positive.
+\end{corollary}
+
+\begin{lemma}[Small-$p$ overhead]
+\label{lem:gamma}
+$\gamma_k = 1+2p_k+O(p_k^2)$ for $k=1,2$, hence $\gamma^2 = e^{4\eps}\,(1+O(\sum_k n_kp_k^2))$.
+\end{lemma}
+\begin{proof}
+Expand \cref{eq:gamma} using $\lambda_1=1-\tfrac43p_1$ and $\lambda_2=1-\tfrac{16}{15}p_2$.
+\end{proof}
+Numerically, $\gamma^2/e^{4\eps}\in[1.000,1.018]$ over all 162 configurations studied below.
+
+\begin{corollary}[Budget-independent dominance]
+\label{cor:threshold}
+If $e^{4\eps}\le V_{\rm ZNE}$ then $N^*=0$: PEC has lower MSE than the ZNE estimator at every shot budget, for every circuit and observable. With the bounds of \cref{prop:zne}, sufficient conditions are
+\begin{equation}
+\eps\le \tfrac14\ln 5 = 0.402\ \text{(ZNE-lin)},\qquad
+\eps\le \tfrac14\ln 15.66 = 0.688\ \text{(ZNE-quad)}.
+\end{equation}
+\end{corollary}
+The thresholds are conservative because they use $1-\langle O\rangle_\lambda^2\le1$ and ignore ZNE's bias, both of which favour PEC further. The practical content is that for circuits with fewer than roughly $35$ two-qubit gates (and a comparable number of single-qubit gates) at $p_2=10^{-2}$, the usual argument for ZNE---that PEC's overhead is prohibitive---does not apply: the extrapolation itself costs more shots than PEC does.
+
+\begin{proposition}[Exactness of exponential ZNE for Clifford circuits]
+\label{prop:clifford}
+Let $U$ be a Clifford circuit, let the noise after each gate be a Pauli channel, and let $O$ be a Pauli observable. Under global folding with odd $\lambda$, $\langle O\rangle_\lambda = \langle O\rangle_0\prod_g (1-2q_g)^{\lambda}$, where $q_g$ is the probability that the error after gate $g$ anticommutes with the Heisenberg-evolved observable at that location. Consequently $\langle O\rangle_\lambda = \langle O\rangle_0\,r^\lambda$ is exactly geometric, and both ZNE-exp0 and ZNE-exp3 are exactly unbiased.
+\end{proposition}
+\begin{proof}
+Propagate $O$ backwards through the circuit in the Heisenberg picture. Because $U$ is Clifford, $O$ remains a single Pauli string at every location, and a Pauli error $P$ inserted there either commutes with it (no effect) or anticommutes (flips the sign of the final outcome). Errors at different locations act independently, so $\langle O\rangle = \langle O\rangle_0\prod_g(1-2q_g)$. In the folded circuit $U(U^\dagger U)^k$ each gate location appears $\lambda=2k+1$ times, and at each repetition the Heisenberg-evolved observable is the same Pauli string up to sign (the folded unitary acts as the identity between repetitions), so each location contributes the same factor $(1-2q_g)$, $\lambda$ times. The exponential model $A+Br^\lambda$ with $A=0$ then fits the data exactly.
+\end{proof}
+\begin{remark}
+GHZ preparation is Clifford, and \cref{prop:clifford} explains why ZNE-exp0 and ZNE-exp3 have bias at the level of floating-point round-off ($<10^{-14}$) for every GHZ configuration in \cref{sec:numerics}, while the polynomial extrapolators are biased. The proposition also identifies the mechanism that makes exponential extrapolation \emph{approximately} right for non-Clifford circuits: it is exact for each Pauli component of the Heisenberg-evolved observable, and the deviation comes from the mixing of components with different decay rates \cite{cai2021}.
+\end{remark}
+
+\paragraph{Bias of polynomial extrapolation.}
+For a single-exponential decay $\langle O\rangle_\lambda=\langle O\rangle_0e^{-\kappa\lambda}$ the Richardson coefficients annihilate the terms of order $\lambda^0,\lambda^1,\lambda^2$ and leave $b_{\rm quad}=-\tfrac{15}{6}\kappa^3\langle O\rangle_0+O(\kappa^4)$ and $b_{\rm lin}=-\tfrac32\kappa^2\langle O\rangle_0+O(\kappa^3)$, where $\kappa=-\tfrac12\ln(\langle O\rangle_3/\langle O\rangle_1)$ is the decay rate per unit scale factor estimated from the pilot data. We use $b_{\rm quad}\approx 2.5\kappa^3|\langle O\rangle_0|$ in the selection rule of \cref{sec:rule}; for the non-Clifford circuits below with $|\langle O\rangle_0|\ge0.2$ the ratio $b_{\rm quad}/(\kappa^3\langle O\rangle_0)$ has median $-1.86$ (10th--90th percentile $-2.67$ to $-0.26$), so the single-exponential model overestimates the bias by a modest factor.
+
+\section{Numerical study}
+\label{sec:numerics}
+
+\subsection{Method}
+We implemented an exact density-matrix simulator in NumPy (no external quantum-software dependency) that applies \cref{eq:depol} after every gate, including the gates of the folded copies $U^\dagger$ and $U$. Because depolarizing noise is a Pauli channel, we also implemented a batched statevector trajectory sampler with per-trajectory Pauli insertions; it reproduces the density-matrix values to within statistical error and provides shot-level validation of the PEC estimator, including the identity $X^2=\gamma^2$ of \cref{prop:pec}. Miscalibrated PEC, in which the experimenter's estimate $\hat p_k=(1+\delta)p_k$ differs from the true rate, is simulated exactly by applying the residual linear map $\mathcal D_{\lambda_k/\hat\lambda_k}$ after each gate (the composition of the true channel with the inverse of the assumed one), with overhead $\hat\gamma$ computed from $\hat p_k$. Shot-level behaviour of the ZNE estimators is checked by drawing binomial sample means at each scale factor and applying the extrapolator (4000 repetitions per point).
+
+Three circuit families were studied, all at $p_2\in\{0.002,0.005,0.01,0.015,0.02,0.03\}$ with $p_1=p_2/10$:
+\begin{itemize}
+\item \textbf{TFIM}: first-order Trotterized transverse-field Ising dynamics on an open chain of $n=6$ qubits, $H=-J\sum Z_iZ_{i+1}-h\sum X_i$ with $J=h=1$, $\delta t=0.1$, and $d=1,\ldots,12$ Trotter steps (each step: $5$ $R_{ZZ}$ gates and $6$ $R_X$ gates). Observable: $Z_3$ (middle site).
+\item \textbf{HEA}: hardware-efficient ansatz on $n=6$ qubits with $L=1,\ldots,8$ layers of $R_Y$ rotations (fixed pseudo-random angles) and a CZ ladder. Observable: $Z_0$. The ideal values range over $[-0.69,0.34]$ and are close to zero for $L\ge3$, which makes this family a stress test for the nonlinear extrapolators.
+\item \textbf{GHZ}: GHZ-state preparation on $n=2,\ldots,8$ qubits with $H$ and CZ gates. Observable: $X^{\otimes n}$ parity, ideal value $1$.
+\end{itemize}
+This gives $27$ circuits $\times$ $6$ noise levels $=162$ configurations with $\eps$ from $0.003$ to $2.02$ and $\gamma^2$ from $1.01$ to $3.2\times10^3$. The study ran in under a minute on two CPU cores.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_scaling.pdf}
+\caption{Exact noisy expectation value versus noise scale factor for one circuit from each family, at three two-qubit error rates. Markers are the exact values at $\lambda=0,1,3,5$; dotted curves are the quadratic Richardson fits through $\lambda=1,3,5$; the dashed line is the ideal value. For GHZ the data lie exactly on a geometric curve (\cref{prop:clifford}).}
+\label{fig:scaling}
+\end{figure}
+
+\subsection{MSE versus shot budget}
+
+\Cref{fig:mse} shows the MSE of every estimator as a function of $N$ for three representative configurations, with Monte Carlo validation points. The analytical curves and the Monte Carlo agree to within $5\%$ for $N\ge10^4$ for all estimators except ZNE-exp3, whose three-point geometric fit has a denominator $E_1+E_5-2E_3$ that can approach zero under shot noise. At $N=10^3$ the empirical MSE of ZNE-exp3 exceeds the delta-method prediction by more than ten orders of magnitude for all three circuits, and at $N=10^4$ by factors of $1.1$--$4.1$; its heavy tails make it unreliable below roughly $10^4$ shots per scale factor. ZNE-exp0, which has no such denominator, agrees with its prediction to within $5\%$ for $N\ge10^4$ and deviates by a factor of $1.9$ only at $N=10^3$ for the deep TFIM circuit, where the pilot estimates of $\langle O\rangle_3\approx0.14$ are themselves noisy.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig2_mse_vs_N.pdf}
+\caption{MSE at fixed total shot budget for three configurations at $p_2=0.01$. Lines: \cref{prop:pec,prop:zne}. Open circles: shot-level Monte Carlo (4000 repetitions). In the two shallower circuits PEC (red) has the lowest MSE at every budget, and for GHZ its variance is below even the raw estimator's. In the deep TFIM circuit ($\gamma^2=9.4$) ZNE-lin wins below $N\approx4\times10^3$; all ZNE estimators plateau at their bias while PEC continues to improve as $1/N$.}
+\label{fig:mse}
+\end{figure}
+
+The qualitative picture is the same across configurations. Every ZNE curve flattens at its squared bias, and the floor is lower for the higher-order and exponential estimators but is reached at a correspondingly larger $N$ because their variance factors are larger. PEC's curve is a straight line of slope $-1$. The budget at which PEC crosses a given ZNE curve is $N^*$ of \cref{eq:nstar}; for the TFIM $d=5$ circuit at $p_2=0.01$ ($\eps=0.28$, $\gamma^2=3.07$) the numerator of \cref{eq:nstar} is negative for all four ZNE estimators, so PEC wins everywhere, even though ZNE-exp3's bias there is only $1.8\times10^{-4}$.
+
+\subsection{Which method is optimal where}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig3_phase.pdf}
+\caption{MSE-optimal estimator for the TFIM family as a function of Trotter depth and total shot budget, at three two-qubit error rates. The black curve is $N^*$ for PEC versus ZNE-quad (\cref{eq:nstar}); it exists only where $\gamma^2$ exceeds the ZNE-quad variance factor, i.e.\ $\eps\gtrsim0.7$, which for $p_2=0.02$ means $d\ge7$. Below a few hundred to a few thousand shots the unmitigated estimator is optimal.}
+\label{fig:phase}
+\end{figure}
+
+\Cref{fig:phase} maps the MSE-optimal estimator for the TFIM family. Three regimes appear. At very small budgets (a few hundred shots for shallow circuits, up to $\sim5\times10^3$ for deep noisy ones) no mitigation is best: all mitigated estimators have larger variance than the raw estimator, and the raw bias $\langle O\rangle_1-\langle O\rangle_0$ is not yet resolved. In an intermediate band that exists only at $\eps\gtrsim0.4$, ZNE-lin and then ZNE-exp0 are optimal: they have the smallest variance factors among the mitigated estimators. Above that band PEC is optimal everywhere. The ZNE-quad and ZNE-exp3 estimators are optimal essentially nowhere in this family (ZNE-quad wins in $2$ of $162$ configurations at $N=10^4$ and in none at other budgets), because any budget large enough to afford their variance is also large enough to make PEC's unbiasedness decisive.
+
+Across all 162 configurations, the MSE-optimal method is PEC in $69$ ($43\%$) at $N=10^3$, $101$ ($62\%$) at $10^4$, $113$ ($70\%$) at $10^5$, $148$ ($91\%$) at $10^6$ and $160$ ($99\%$) at $10^7$. The raw estimator is optimal in $58$ ($36\%$) at $N=10^3$, falling to $5$ at $10^6$. ZNE-exp0 is the best ZNE variant, optimal in $24$--$26$ configurations at $N=10^4$--$10^5$; its two remaining wins at $10^7$ are the shallow TFIM circuits ($d=2,3$) at the highest noise rate $p_2=0.03$, where $\gamma^2\ge3.9$ while the exponential model is nearly exact for the high-fidelity observable. The five configurations in which the raw estimator is still optimal at $N=10^6$ are all HEA circuits with $|\langle O\rangle_0|<0.1$: depolarizing bias is proportional to $\langle O\rangle_0$, so for an observable whose ideal value is near zero there is little to mitigate.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig4_nstar.pdf}
+\caption{Left: PEC overhead $\gamma^2$ for all 162 configurations against the expected error count $\eps$, together with $e^{4\eps}$ (\cref{lem:gamma}) and the worst-case ZNE variance factors $V_{\rm lin}=5$ and $V_{\rm quad}=15.7$. Left of the dotted verticals PEC dominates the corresponding ZNE estimator at every budget (\cref{cor:threshold}). Right: crossover budget $N^*$ for the configurations where it is positive; crosses are the single-exponential prediction $N^*\approx(\gamma^2-\langle O\rangle_0^2-V_{\rm ZNE})/(2.5\kappa^3\langle O\rangle_0)^2$ for ZNE-quad, which underestimates $N^*$ by a median factor of $5.9$ because it overestimates the bias.}
+\label{fig:nstar}
+\end{figure}
+
+\Cref{fig:nstar} (left) shows that $\gamma^2$ is a function of $\eps$ alone to within $2\%$ across all families, as \cref{lem:gamma} predicts, so the dominance thresholds of \cref{cor:threshold} are genuinely circuit-independent. The right panel shows $N^*$ where it is positive. For ZNE-lin it ranges from $4\times10^2$ to $1.4\times10^5$ (TFIM) and $4\times10^4$ to $1.2\times10^6$ (HEA); for ZNE-quad from $77$ to $1.9\times10^5$ (TFIM) and $1.7\times10^5$ to $6.3\times10^6$ (HEA), where the small ideal values make the Richardson bias tiny in absolute terms. No GHZ configuration has $N^*>0$.
+
+\subsection{Sensitivity of PEC to miscalibration}
+
+PEC's unbiasedness rests on the noise model. \Cref{fig:miscal} (left) shows the PEC MSE at $N=10^5$ when the assumed error rates are off by a relative factor $\delta$, with the best ZNE MSE for the same circuit as a reference. Under-estimating the noise ($\delta<0$) leaves a residual depolarizing decay; over-estimating it over-corrects and inflates the estimate; the two sides are nearly symmetric. The bias scales linearly in $\delta$, so $\MSE_{\rm PEC}\approx(c\,\delta\,\eps\langle O\rangle_0)^2+\hat\gamma^2/N$, and PEC remains preferable to the best ZNE estimator only while $|\delta|$ is below a budget-dependent threshold $\delta^*(N)$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig5_miscal.pdf}
+\caption{Left: PEC MSE at $N=10^5$ as a function of the relative error $\delta$ in the assumed gate error rates (both $p_1$ and $p_2$ scaled by $1+\delta$); dashed lines are the best ZNE MSE for the same circuit. Right: the largest $|\delta|$ for which PEC still beats the best ZNE estimator, as a function of budget. Where the best ZNE estimator is exactly unbiased (GHZ) or nearly so (TFIM $d=5$), $\delta^*$ falls as $N^{-1/2}$; where ZNE retains a bias floor (TFIM $d=10$) $\delta^*$ saturates at that floor.}
+\label{fig:miscal}
+\end{figure}
+
+The right panel of \cref{fig:miscal} gives $\delta^*(N)$. For the shallow TFIM circuit it is $32\%$ at $N=10^3$, $15\%$ at $10^4$, $5\%$ at $10^5$, $1.8\%$ at $10^6$ and $0.7\%$ at $10^7$, following $N^{-1/2}$ as expected when the competing ZNE estimator is nearly unbiased. For GHZ, where ZNE-exp0 is exactly unbiased, $\delta^*$ falls to $0.3\%$ at $10^7$ and to zero beyond: with enough shots an exactly unbiased ZNE estimator beats any imperfectly calibrated PEC. For the deep TFIM circuit, by contrast, every ZNE estimator carries a bias floor of order $10^{-3}$ and $\delta^*$ saturates at $2$--$4\%$. The HEA circuit tolerates $\delta$ up to $30\%$ at $10^5$ because its small $|\langle O\rangle_0|$ suppresses the miscalibration bias.
+
+The practical reading is that at the budgets where PEC's advantage is largest, $N\gtrsim10^5$, it requires the gate error rates to be known to a few percent. This is within reach of cycle-benchmarking or sparse Pauli--Lindblad model learning \cite{vandenberg2023}, but it is a condition ZNE does not impose, and the cost of the learning experiment is not included in $N$ here.
+
+
+\subsection{Robustness to non-Pauli noise: amplitude damping}
+\label{sec:ampdamp}
+
+Depolarizing noise is the most favourable case for PEC because its inverse is a Pauli quasi-channel with the smallest possible one-norm, and for ZNE because the zero-noise asymptote of every Pauli observable is zero. To test the conclusions against a non-Pauli, non-unital error we added single-qubit amplitude damping with probability $g_k=\eta p_k$ ($\eta=0.5$) on each of a gate's qubits after the depolarizing channel, for the TFIM family at $p_2=0.01$. We consider two variants. In the \emph{twirled} variant the damping channel is replaced by its Pauli twirl (probabilities $p_X=p_Y=g/4$, $p_Z=(1-g/2-\sqrt{1-g})/2$), which is the effective noise under randomized compiling \cite{wallman2016}; the total noise is then a (non-depolarizing) Pauli channel, the PEC quasi-probability is obtained by inverting the channel's Pauli eigenvalues, and PEC is exact with an overhead $\gamma^2$ that is larger than before ($5.2$ instead of $3.1$ at $d=5$). In the \emph{untwirled} variant the true damping channel acts, but the experimenter's PEC decomposition is still built from the twirled model, which is the realistic situation when randomized compiling is \emph{not} applied: the Pauli model matches the channel's Pauli eigenvalues but misses its non-unital part, $Z\mapsto(1-g)Z+gI$. Both variants are simulated exactly by Kraus-sum density-matrix evolution (\cref{app:sim}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig6_ampdamp.pdf}
+\caption{Amplitude damping added to the TFIM family ($p_2=0.01$, $\eta=0.5$). Left: noisy expectation value versus scale factor at $d=5$ for the twirled (Pauli) and untwirled variants; the damping pushes $\langle Z_3\rangle$ towards $+1$ so the untwirled curve has a non-zero asymptote. Middle: MSE versus budget at $d=5$ for the untwirled variant, with the twirled PEC curve dotted for reference; PEC built on the Pauli model plateaus at a bias of $0.048$, above every ZNE estimator. Right: MSE-optimal estimator for the untwirled variant as a function of depth and budget; PEC is optimal nowhere, and three-parameter exponential extrapolation (purple) takes over at large budgets because it fits the shifted asymptote.}
+\label{fig:ampdamp}
+\end{figure}
+
+\Cref{fig:ampdamp} summarizes the outcome. In the twirled variant the results of the preceding sections carry over with the thresholds shifted by the larger $\gamma$: PEC is optimal at all twelve depths for $N\ge10^6$, at eleven of twelve for $N=10^5$, and ZNE-lin or ZNE-exp0 are optimal at small budgets for the deeper circuits. In the untwirled variant the ranking reverses. PEC acquires a bias that grows linearly with circuit size, from $+0.010$ at $d=1$ to $+0.119$ at $d=12$, about $0.09\,\eps$; the sign is positive because the inverse Pauli channel re-inflates the Pauli components while the non-unital shift towards $|0\rangle$ is left uncorrected, so PEC over-corrects. For $d\ge7$ ($\eps\gtrsim0.75$) this bias exceeds the bias of the \emph{unmitigated} estimator ($+0.101$ versus $-0.056$ at $d=10$), so PEC on an unmatched model is worse than doing nothing. Among the ZNE estimators the ranking also changes: ZNE-exp0, whose fixed asymptote of zero is now wrong, picks up a bias of $-0.008$ at $d=5$ (versus $-0.001$ in the twirled case), while ZNE-exp3, which fits the asymptote, has bias $4\times10^{-5}$ at $d=5$ and $-9\times10^{-4}$ at $d=10$ and is MSE-optimal at eleven of twelve depths for $N\ge10^7$. Across depths, the untwirled optimum moves from raw or ZNE-lin ($N\le10^3$) through ZNE-exp0 ($10^4$) and ZNE-quad ($10^5$) to ZNE-exp3 ($\ge10^6$); PEC is optimal at no depth and no budget.
+
+The lesson is not that PEC fails under amplitude damping; a decomposition that includes the non-unital part (which requires non-Pauli basis operations such as reset \cite{temme2017,endo2018}) or physical twirling restores unbiasedness at the cost of a larger $\gamma$. It is that PEC's advantage in \cref{cor:threshold} is conditional on the noise model being correct in \emph{structure}, not only in rate, whereas ZNE with a free asymptote degrades gracefully. In the selection rule below we therefore add the condition that PEC be used only when the noise has been Pauli-twirled or the model has been validated against a non-Pauli test such as the decay of $\langle Z\rangle$ on an idle qubit prepared in $|1\rangle$.
+
+\section{A selection rule}
+\label{sec:rule}
+
+ZNE requires running the circuit at $\lambda=1$ and $\lambda=3$ in any case, and PEC requires calibrated error rates, from which $\gamma$ follows by \cref{eq:gamma}. The following rule uses nothing else.
+
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item Confirm that the noise is Pauli to the accuracy required (randomized compiling, or a non-unitality check); if it is not, PEC on a Pauli model is excluded and ZNE-exp3 is preferred at large budgets (\cref{sec:ampdamp}).
+\item From the pilot estimates $\hat E_1,\hat E_3$ (and $\hat E_5$ if available) compute the ZNE variance factor $V_{\rm ZNE}=K\sum_\ell c_\ell^2(1-\hat E_\ell^2)$ for the intended extrapolator.
+\item If $\gamma^2\le V_{\rm ZNE}$, use PEC at any budget.
+\item Otherwise estimate $\kappa=-\tfrac12\ln(\hat E_3/\hat E_1)$ and $\hat E_0=\hat E_1\sqrt{\hat E_1/\hat E_3}$, set $b\approx2.5\kappa^3|\hat E_0|$ for ZNE-quad (or $1.5\kappa^2|\hat E_0|$ for ZNE-lin), and use PEC if $N>(\gamma^2-\hat E_0^2-V_{\rm ZNE})/b^2$, ZNE otherwise.
+\end{enumerate}
+
+We evaluated the rule (with ZNE-quad as the ZNE alternative) at $26$ budgets from $10^2$ to $10^7$ for all $162$ configurations, using the exact $\langle O\rangle_\lambda$ in place of the pilot estimates. Relative to an oracle that picks the better of PEC and ZNE-quad, the rule's MSE ratio has median $1.00$, 90th percentile $1.00$, and exceeds $2$ in $1.6\%$ of cases (maximum $34$, in the HEA circuits with $|\langle O\rangle_0|<0.1$ where $\kappa$ is poorly defined). Relative to an oracle over all six estimators including raw and ZNE-exp0, the ratio exceeds $2$ in $15\%$ of cases, almost all at $N\le10^3$ where the raw estimator is optimal. For comparison, always choosing PEC exceeds twice the all-estimator oracle MSE in $17\%$ of cases with a maximum ratio of $728$, and always choosing ZNE-quad does so in $95\%$ of cases with median ratio $10$.
+
+Two refinements are cheap. Adding the condition ``use the raw estimator if $N<(1-\hat E_1^2)^{-1}\cdot\min(\gamma^2,V_{\rm ZNE})$'' recovers most of the small-$N$ losses. And when $|\hat E_0|$ is small relative to its standard error, the bias model should not be trusted and the rule should fall back to step 2's comparison alone, which favours PEC.
+
+\section{Discussion and limitations}
+\label{sec:discussion}
+
+The central finding is that the comparison between ZNE and PEC is, for a wide range of circuits, not a bias-versus-variance trade-off at all: PEC has both smaller bias (zero) and smaller variance than every ZNE estimator unless $\eps$ exceeds roughly $0.4$--$0.7$ errors per circuit. The folk argument against PEC, that $\gamma^2$ grows exponentially, is correct but incomplete, because extrapolation's variance amplification is a constant of comparable size ($5$--$16$) that is usually left out of the accounting. Once $\eps$ exceeds the threshold, PEC's advantage shrinks to a budget-dependent one that is fragile to miscalibration, and at the very largest budgets an exactly or nearly unbiased ZNE estimator (exponential extrapolation on a Clifford or near-Clifford circuit) wins.
+
+Several simplifications bound the scope of these conclusions.
+
+\emph{Noise model.} The main study assumed local depolarizing noise, which is what randomized compiling produces to good approximation \cite{wallman2016} and is the setting in which PEC's quasi-probability is simplest. Coherent errors would make global folding a poor noise amplifier (folding does not in general scale coherent errors linearly) and would also change the PEC decomposition; amplitude damping was treated in \cref{sec:ampdamp}, and the other non-Pauli errors behave similarly in kind. Correlated and non-Markovian errors, crosstalk and readout error were all omitted. Readout error affects the two methods asymmetrically: it is not amplified by folding and so biases ZNE directly, whereas PEC can absorb it into the decomposition. Including these would change the numbers but not the structure of \cref{cor:nstar}.
+
+\emph{PEC calibration cost.} We charged PEC nothing for learning the noise model and treated the model as exact except in \cref{fig:miscal}. On hardware the learning experiment is a real cost and its statistical error is a floor on $\delta$. \Cref{fig:miscal} translates that floor into a maximum useful budget.
+
+\emph{ZNE design choices.} We used global folding with odd integer scale factors and equal shot allocation. Optimal shot allocation across scale factors reduces $V_{\rm ZNE}$ by a constant factor (for ZNE-lin, from $5$ to $(\tfrac32+\tfrac12)^2=4$), which shifts the thresholds of \cref{cor:threshold} slightly ($\eps\le0.35$) but does not change the picture. Local (gate-level) folding and pulse-stretching behave differently under non-Pauli noise but identically here.
+
+\emph{System size.} Exact simulation limited us to $n\le8$, but the dependence on $n$ can be read off \cref{eq:nstar}. The quantities entering it are $\eps$, $\langle O\rangle_\lambda$ and the extrapolation bias, and for a local observable the last two depend only on the gates inside the observable's backward light cone, because errors outside it cannot change $\langle O\rangle$. For a depth-$d$ brickwork circuit on $n$ qubits with a single-site observable the light cone contains $O(d^2)$ gates (in one dimension) while the whole circuit contains $O(nd)$, so $\langle O\rangle_\lambda$ and the ZNE bias saturate once $d\gtrsim n$, exactly as in our $n=6$ data, where the light cone of $Z_3$ covers the whole chain within the first few Trotter steps. The PEC overhead as implemented here, $\gamma^2=e^{4\eps}$ with $\eps$ counting \emph{all} gates, does not saturate: it grows as $e^{4nd\bar p}$ and would make PEC uncompetitive at large $n$ for a local observable. The remedy is standard and should be considered part of PEC: restrict the quasi-probability sampling to gates in the light cone, which replaces $\eps$ by $\eps_{\rm LC}=O(d^2\bar p)$ and leaves \cref{cor:nstar,cor:threshold} valid with $\eps_{\rm LC}$ in place of $\eps$. Under that replacement the thresholds $\eps_{\rm LC}\lesssim0.4$--$0.7$ translate, for $p_2=10^{-2}$ and a one-dimensional light cone, to circuit depths of roughly $d\lesssim8$--$11$ independent of $n$; for global observables such as the GHZ parity, where the light cone is the whole circuit, $\eps$ itself is the right variable and the thresholds bound the total gate count. The ZNE variance factor $V_{\rm ZNE}$ is $n$-independent in all cases. What does not transfer automatically is the single-exponential bias estimate used in the selection rule: at larger $n$ and $d$ the decay of $\langle O\rangle_\lambda$ is a sum of more exponentials with a wider spread of rates \cite{cai2021}, and the rule's bias constant should be re-fitted on pilot data in that regime.
+
+\emph{Other methods.} We did not compare against Clifford data regression, virtual distillation, symmetry verification or probabilistic error amplification. The MSE-at-fixed-budget framework accommodates them directly once their bias and variance factor are known.
+
+\section{Conclusion}
+
+For local depolarizing noise, Pauli observables and the standard estimators, the choice between zero-noise extrapolation and probabilistic error cancellation reduces to comparing two numbers that are available before the main experiment: the PEC overhead $\gamma^2\simeq e^{4\eps}$ and the extrapolation variance factor $V_{\rm ZNE}\le5$ (linear) or $15.7$ (quadratic). When $\gamma^2\le V_{\rm ZNE}$, PEC is preferable at every shot budget. When it is not, PEC becomes preferable above a crossover budget $N^*$ given in closed form, provided the noise model is calibrated to a relative accuracy that shrinks as $N^{-1/2}$. For Clifford circuits exponential extrapolation is exactly unbiased, and for any nonzero miscalibration of the PEC noise model it becomes the better choice at large enough budgets. The advantage of PEC is conditional on the noise being Pauli in structure: with untwirled amplitude damping, PEC on a Pauli model is biased by about $0.09\,\eps$ and is beaten at every budget by three-parameter exponential extrapolation. These results were validated by exact simulation of 162 configurations; the code is released so that the analysis can be repeated for other circuits and noise models.
+
+\section*{Code and data availability}
+The simulator, experiment scripts, raw results and figure scripts are available at \url{https://github.com/AngelSayani/zne-vs-pec}.
+
+\section*{Acknowledgements}
+[Acknowledgements.]
+
+\appendix
+\section{Simulator details}
+\label{app:sim}
+The density-matrix back-end stores $\rho$ as a $2^n\times2^n$ array and applies a $k$-qubit gate by tensor contraction on the row and column indices of the acted-on qubits. The depolarizing map \cref{eq:depol} is applied as $\lambda\rho+(1-\lambda)\,\tr_q(\rho)\otimes I/2^k$ for arbitrary real $\lambda$, which allows the residual map $\mathcal D_{\lambda/\hat\lambda}$ (with $\lambda/\hat\lambda>1$ when $\delta>0$) to be applied directly; the result is a valid linear functional for computing expectation values even when it is not a quantum channel. Folding is implemented at the gate-list level, $U\mapsto U(U^\dagger U)^k$, and noise is applied after every gate of the folded list.
+
+For the amplitude-damping study a second density-matrix back-end applies noise as a signed sum of Kraus terms, $\rho\mapsto\sum_i c_iK_i\rho K_i^\dagger$, which covers Pauli channels ($K_i$ Paulis, $c_i$ probabilities), Pauli quasi-channels ($c_i$ of either sign, used for the PEC inverse applied to the untwirled noise) and amplitude damping (two Kraus operators). The inverse of a general $k$-qubit Pauli channel is computed by inverting its $4^k$ Pauli eigenvalues and transforming back with the commutation-sign matrix; the implementation was checked against \cref{eq:gamma} for depolarizing channels and by verifying that channel composed with inverse gives the identity.
+
+The trajectory back-end stores a batch of $B$ statevectors of shape $(B,2,\ldots,2)$. After each gate it samples a Pauli index per trajectory from the physical Pauli distribution and, for PEC, a second index from the normalized quasi-probability $|a_P|/\gamma_k$, accumulating the sign of $a_P$. Pauli operators are applied as axis flips and sign masks; the phase of $Y$ is a per-trajectory global phase and is dropped. Measurement draws one bitstring per trajectory and returns the observable eigenvalue. The following checks were performed (TFIM, $n=4$, $d=3$, $p_2=0.05$): the noiseless and noisy trajectory averages agree with the density-matrix values to within one standard error ($0.5814$ versus $0.5828\pm0.0044$); the PEC trajectory estimator recovers the ideal value ($0.836\pm0.018$ versus $0.8424$); the empirical variance of single-shot PEC samples ($9.20$) matches $\gamma^2-\langle O\rangle_0^2=9.16$.
+
+\section{Table of representative configurations}
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llrrrrrr}
+\toprule
+Circuit & $(n_1,n_2)$ & $\eps$ & $\gamma^2$ & $\langle O\rangle_0$ & $\kappa$ & $b_{\rm quad}$ & $b_{\rm exp3}$\\
+\midrule
+TFIM $d=5$ & (30,25) & 0.28 & 3.07 & 0.654 & 0.119 & $-2.4\times10^{-3}$ & $-1.8\times10^{-4}$\\
+TFIM $d=10$ & (60,50) & 0.56 & 9.41 & 0.339 & 0.300 & $-1.5\times10^{-2}$ & $-2.2\times10^{-3}$\\
+HEA $L=4$ & (30,20) & 0.23 & 2.51 & $-0.269$ & 0.056 & $-1.8\times10^{-5}$ & $-9.6\times10^{-5}$\\
+GHZ $n=6$ & (11,5) & 0.061 & 1.28 & 1.000 & 0.062 & $-5.1\times10^{-4}$ & $<10^{-14}$\\
+GHZ $n=8$ & (15,7) & 0.085 & 1.41 & 1.000 & 0.086 & $-1.3\times10^{-3}$ & $<10^{-14}$\\
+\bottomrule
+\end{tabular}
+\caption{Representative configurations at $p_2=0.01$, $p_1=0.001$. $\kappa=-\frac12\ln(\langle O\rangle_3/\langle O\rangle_1)$. The ZNE variance factors $V_{\rm ZNE}$ for these rows lie in $[0.68,4.7]$ (lin), $[2.9,14.9]$ (quad), $[0.81,10.7]$ (exp0) and $[3.5,36.4]$ (exp3).}
+\end{table}
+
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+\end{document}
