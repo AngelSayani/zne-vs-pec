@@ -1,9 +1,0 @@
-__pycache__/
-*.aux
-*.log
-*.bbl
-*.blg
-*.fls
-*.fdb_latexmk
-*.out
-*.synctex.gz
