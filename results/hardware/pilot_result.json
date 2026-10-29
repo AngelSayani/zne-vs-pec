@@ -1,0 +1,66 @@
+{
+ "results": [
+  {
+   "scale": 1,
+   "z": [
+    0.953,
+    0.926,
+    0.938,
+    0.961,
+    0.929,
+    0.958
+   ],
+   "shots": 2000
+  },
+  {
+   "scale": 3,
+   "z": [
+    0.924,
+    0.908,
+    0.904,
+    0.943,
+    0.912,
+    0.934
+   ],
+   "shots": 2000
+  },
+  {
+   "scale": 5,
+   "z": [
+    0.903,
+    0.891,
+    0.899,
+    0.934,
+    0.876,
+    0.895
+   ],
+   "shots": 2000
+  }
+ ],
+ "metrics": {
+  "caller": "qiskit_ibm_runtime~sampler.py",
+  "qiskit_version": "qiskit_ibm_runtime-0.51.0,qiskit-2.6.1*,qiskit_aer-0.18.0",
+  "timestamps": {
+   "created": "2026-10-24T12:44:00.486042Z",
+   "finished": "2026-10-24T12:44:17.725284Z",
+   "running": "2026-10-24T12:44:02.14514Z"
+  },
+  "usage": {
+   "qpu_charge_time_seconds": 4,
+   "value": 0.057748,
+   "unit": "resource_units",
+   "status": "complete",
+   "details": [
+    {
+     "value": 0.057748,
+     "unit": "resource_units",
+     "metric": {
+      "id": "caffe3ca-729c-5750-8777-df63bbf8bfd9",
+      "value": 4
+     }
+    }
+   ]
+  },
+  "circuits_execution_time_ns": 1572775424
+ }
+}

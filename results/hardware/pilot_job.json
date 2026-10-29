@@ -1,0 +1,56 @@
+{
+ "job_id": "dbeag40m94ac738rfq3g",
+ "backend": "ibm_fez",
+ "chain": [
+  147,
+  146,
+  145,
+  144,
+  143,
+  142
+ ],
+ "phys": [
+  147,
+  146,
+  145,
+  144,
+  143,
+  142
+ ],
+ "meta": [
+  {
+   "scale": 1,
+   "ops": {
+    "rz": 44,
+    "sx": 26,
+    "cz": 10,
+    "measure": 6,
+    "barrier": 1
+   },
+   "depth": 26
+  },
+  {
+   "scale": 3,
+   "ops": {
+    "rz": 236,
+    "sx": 78,
+    "cz": 30,
+    "measure": 6,
+    "barrier": 1
+   },
+   "depth": 108
+  },
+  {
+   "scale": 5,
+   "ops": {
+    "rz": 428,
+    "sx": 130,
+    "cz": 50,
+    "measure": 6,
+    "barrier": 1
+   },
+   "depth": 190
+  }
+ ],
+ "logical_depth": 1
+}

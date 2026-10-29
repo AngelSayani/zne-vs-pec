@@ -1,0 +1,544 @@
+{
+ "job_id": "dbean3gm94ac738rg1d0",
+ "backend": "ibm_fez",
+ "rep": 2,
+ "shots": 8000,
+ "meta": [
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 1,
+   "scale": 1,
+   "ops": {
+    "rz": 44,
+    "sx": 26,
+    "cz": 10,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 1,
+   "scale": 3,
+   "ops": {
+    "rz": 236,
+    "sx": 78,
+    "cz": 30,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 1,
+   "scale": 5,
+   "ops": {
+    "rz": 428,
+    "sx": 130,
+    "cz": 50,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 2,
+   "scale": 1,
+   "ops": {
+    "rz": 79,
+    "sx": 46,
+    "cz": 20,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 2,
+   "scale": 3,
+   "ops": {
+    "rz": 421,
+    "sx": 138,
+    "cz": 60,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 2,
+   "scale": 5,
+   "ops": {
+    "rz": 763,
+    "sx": 230,
+    "cz": 100,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 3,
+   "scale": 1,
+   "ops": {
+    "rz": 114,
+    "sx": 66,
+    "cz": 30,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 3,
+   "scale": 3,
+   "ops": {
+    "rz": 606,
+    "sx": 198,
+    "cz": 90,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 3,
+   "scale": 5,
+   "ops": {
+    "rz": 1098,
+    "sx": 330,
+    "cz": 150,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 4,
+   "scale": 1,
+   "ops": {
+    "rz": 149,
+    "sx": 86,
+    "cz": 40,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 4,
+   "scale": 3,
+   "ops": {
+    "rz": 791,
+    "sx": 258,
+    "cz": 120,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 4,
+   "scale": 5,
+   "ops": {
+    "rz": 1433,
+    "sx": 430,
+    "cz": 200,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 6,
+   "scale": 1,
+   "ops": {
+    "rz": 219,
+    "sx": 126,
+    "cz": 60,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 6,
+   "scale": 3,
+   "ops": {
+    "rz": 1161,
+    "sx": 378,
+    "cz": 180,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 6,
+   "scale": 5,
+   "ops": {
+    "rz": 2103,
+    "sx": 630,
+    "cz": 300,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 8,
+   "scale": 1,
+   "ops": {
+    "rz": 289,
+    "sx": 166,
+    "cz": 80,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 8,
+   "scale": 3,
+   "ops": {
+    "rz": 1531,
+    "sx": 498,
+    "cz": 240,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "TFIM",
+   "n": 6,
+   "depth": 8,
+   "scale": 5,
+   "ops": {
+    "rz": 2773,
+    "sx": 830,
+    "cz": 400,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 4,
+   "depth": 1,
+   "scale": 1,
+   "ops": {
+    "rz": 22,
+    "sx": 11,
+    "measure": 4,
+    "cz": 3,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 4,
+   "depth": 1,
+   "scale": 3,
+   "ops": {
+    "rz": 78,
+    "sx": 25,
+    "cz": 9,
+    "measure": 4,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 4,
+   "depth": 1,
+   "scale": 5,
+   "ops": {
+    "rz": 134,
+    "sx": 39,
+    "cz": 15,
+    "measure": 4,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 6,
+   "depth": 1,
+   "scale": 1,
+   "ops": {
+    "rz": 34,
+    "sx": 17,
+    "measure": 6,
+    "cz": 5,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 6,
+   "depth": 1,
+   "scale": 3,
+   "ops": {
+    "rz": 122,
+    "sx": 39,
+    "cz": 15,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "GHZ",
+   "n": 6,
+   "depth": 1,
+   "scale": 5,
+   "ops": {
+    "rz": 210,
+    "sx": 61,
+    "cz": 25,
+    "measure": 6,
+    "barrier": 1
+   },
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "cal0",
+   "n": 6,
+   "depth": 0,
+   "scale": 0,
+   "ops": {},
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  },
+  {
+   "family": "cal1",
+   "n": 6,
+   "depth": 0,
+   "scale": 0,
+   "ops": {},
+   "phys": [
+    147,
+    146,
+    145,
+    144,
+    143,
+    142
+   ]
+  }
+ ],
+ "chain6": [
+  147,
+  146,
+  145,
+  144,
+  143,
+  142
+ ]
+}
